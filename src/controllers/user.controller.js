@@ -443,6 +443,61 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
             "User channel profile fetched successfully"
         )
     );
+});
+
+const getWatchHistory = asyncHandler(async (req, res) => {
+    const user=await User.aggregate([
+        {
+          $match :{//aggregation pipeline me code directly jata hai isiliye req.user._id ko convert krna padta hai
+            _id: new mongoose.Types.ObjectId(req.user._id)
+          }  
+        },
+        {
+            $lookup: {
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchedHistory",
+                pipeline: [
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner",
+                            pipeline: [
+                                {
+                                    $project: {
+                                        _id: 1,
+                                        fullName: 1,
+                                        username: 1,
+                                        avatar: 1
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        $addFields: {
+                            owner: { 
+                                $first: "$owner" 
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ])
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            user[0].watchedHistory,
+            "User watch history fetched successfully"
+        )
+    );
 })
 
 export { registerUser,
@@ -454,5 +509,6 @@ export { registerUser,
         updateAccountDetails,
         updateUserAvatar,
         updateUserCoverImage,
-        getUserChannelProfile
+        getUserChannelProfile,
+        getWatchHistory 
 };
